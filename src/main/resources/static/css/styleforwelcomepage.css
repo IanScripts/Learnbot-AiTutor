@@ -1,0 +1,110 @@
+:root{
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --brand:#314d45;
+  --subbar:#f4f5f7;
+  --sky:#dff4ff;
+  --hill:#6aa314;
+  --hill-2:#8cc63f;
+  --maxw:1100px;
+  --hillH: clamp(220px, 40vh, 520px); /* grassy field height */
+}
+
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  padding:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  color:var(--ink);
+}
+
+/* Header + tabs */
+.topbar{background:var(--brand); color:#fff; font-size:.9rem}
+.topbar .inner{max-width:var(--maxw); margin:0 auto; padding:.5rem 1rem; text-align:center; font-weight:800}
+
+.subbar{background:var(--subbar); border-bottom:1px solid #e5e7eb}
+.subbar .inner{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:.6rem 1rem;
+  display:flex; justify-content:center; align-items:center; gap:.75rem;
+}
+
+.tabs{display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center}
+.tabs a{
+  display:inline-flex; align-items:center;
+  padding:.35rem .75rem;
+  border-radius:999px;
+  background:#eef2f7;
+  border:1px solid #d1d5db;
+  color:#0f172a; text-decoration:none; font-weight:800; font-size:.95rem;
+}
+.tabs a:hover{background:#e2e8f0}
+.tabs a:focus{outline:2px solid #1f4a83; outline-offset:2px}
+
+/* Welcome */
+.welcome{
+  max-width:var(--maxw);
+  margin:1.2rem auto;
+  padding:0 1rem;
+  display:grid; grid-template-columns:1.15fr .85fr; gap:1.25rem; align-items:start;
+}
+.welcome h1{margin:.2rem 0 0; font-size:2.1rem}
+.welcome p{margin:.3rem 0 0; color:#1f2937; font-size:.95rem}
+.welcome a{color:#1f4a83; text-decoration:underline}
+
+/* Right skybox clouds */
+.skybox{position:relative; width:100%; aspect-ratio:4/3; border:1px solid #d1d5db; border-radius:.35rem; overflow:hidden; background:linear-gradient(#bfe6ff,#86d1ff)}
+.cloud{position:absolute; width:220px; height:90px; filter:blur(.2px)}
+.cloud::before{content:""; position:absolute; inset:0; background:
+  radial-gradient(closest-side, #fff 95%, #ffffff00 100%) 10% 60%/44% 70% no-repeat,
+  radial-gradient(closest-side, #fff 95%, #ffffff00 100%) 35% 35%/40% 80% no-repeat,
+  radial-gradient(closest-side, #fff 95%, #ffffff00 100%) 60% 55%/45% 85% no-repeat,
+  radial-gradient(closest-side, #fff 95%, #ffffff00 100%) 85% 50%/35% 70% no-repeat;
+  border-radius:999px;}
+.cloud.one{left:12%; top:22%}
+.cloud.two{right:16%; top:38%}
+.cloud.three{left:40%; top:60%; transform:scale(.9)}
+
+/* Hero + grassy field */
+.hero{position:relative; overflow:hidden;}
+.hero .sky{background:linear-gradient(180deg, var(--sky) 0%, #c7ebff 100%);}
+.hero .sky .inner{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:2rem 1rem calc(var(--hillH) + 1.5rem); /* clears the hills */
+  text-align:center;
+}
+.hero h2{font-size:2rem; margin:0 0 1.2rem}
+.hero p{color:var(--muted); margin:.25rem 0 0}
+
+/* Grassy field */
+.hills{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:var(--hillH);
+}
+.hills svg{display:block; width:100%; height:100%}
+
+/* Buttons */
+.btn{display:inline-block; padding:.75rem 1.1rem; border-radius:12px; text-decoration:none; font-weight:800; border:2px solid #0f172a; box-shadow:0 2px 0 rgba(15,23,42,.25)}
+.btn-primary{background:#1f4a83; color:#fff}
+.btn-primary:hover,.btn-primary:focus{filter:brightness(.95)}
+
+/* Bulletin */
+.bulletin{max-width:720px; margin:1rem auto 0; text-align:left; background:#fff; border:1px solid #e5e7eb; border-left:6px solid var(--hill); border-radius:.5rem; padding:1rem 1.25rem; box-shadow:0 4px 10px rgba(0,0,0,.04)}
+.bulletin h3{margin:.1rem 0 .5rem}
+.bulletin ul{margin:.25rem 0 0; padding-left:1.1rem}
+.bulletin li{margin:.4rem 0}
+.bulletin time{font-variant-numeric:tabular-nums; color:#6b7280; margin-right:.5rem}
+
+/* Background (sun only) */
+.site-sky{position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; background:linear-gradient(#bfe6ff 0%, #86d1ff 60%, #73c7ff 100%);} 
+.site-sky .sun{position:absolute; width:180px; height:180px; left:6%; top:7%; background:radial-gradient(circle at 50% 50%, #fff8b5 0%, #ffe66d 40%, #ffd24d 60%, #ffbf2a 100%); border-radius:50%; box-shadow:0 0 70px rgba(255,223,88,.7);} 
+
+footer{height:28px}
+
+@media (max-width: 900px){
+  .welcome{grid-template-columns:1fr;}
+  .hero .sky .inner{padding:2rem 1rem calc(var(--hillH) + 1.5rem)}
+}
