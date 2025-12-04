@@ -73,7 +73,7 @@ async function loadPastSessions() {
             const li = document.createElement("li");
             li.className = "session-item";
 
-            // ---- OPEN BUTTON----
+            // ---- OPEN BUTTON ----
             const openBtn = document.createElement("button");
             openBtn.type = "button";
             openBtn.className = "session-pill";
@@ -84,13 +84,27 @@ async function loadPastSessions() {
                 ? `${title} — ${created}`
                 : title;
 
+            // 👉 UPDATED: open Practice Book for this mission
             openBtn.addEventListener("click", () => {
                 const sessionId = s.id;
                 console.log("Opening session", sessionId);
-                window.location.href = `/home?sessionId=${encodeURIComponent(sessionId)}`;
+
+                const topic = s.topic ? encodeURIComponent(s.topic) : "";
+                const grade = s.gradeLevel ? encodeURIComponent(s.gradeLevel) : "";
+
+                // /practicebook?sessionId=ID&topic=...&grade=...
+                let url = `/practicebook?sessionId=${encodeURIComponent(sessionId)}`;
+                if (topic) {
+                    url += `&topic=${topic}`;
+                }
+                if (grade) {
+                    url += `&grade=${grade}`;
+                }
+
+                window.location.href = url;
             });
 
-            // ---- DELETE BUTTON----
+            // ---- DELETE BUTTON ----
             const deleteBtn = document.createElement("button");
             deleteBtn.type = "button";
             deleteBtn.className = "session-delete-btn";

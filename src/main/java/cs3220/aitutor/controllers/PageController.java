@@ -3,6 +3,8 @@ package cs3220.aitutor.controllers;
 import cs3220.aitutor.services.UserContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.ui.Model;
+
 
 @Controller
 public class PageController {
@@ -55,7 +57,17 @@ public class PageController {
         public String contact() {
             return "contact";  // contact.jte
         }
+
+    @GetMapping("/practicebook")
+    public String practiceBook(Model model) {
+        if (userContext.getCurrentUsername() == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("currentUser", userContext.getCurrentUsername());
+        return "practicebook";  // practicebook.jte
     }
+
+}
 
 
 
