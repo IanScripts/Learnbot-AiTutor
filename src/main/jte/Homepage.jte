@@ -21,6 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
+
 <div class="main-container">
     <!-- LEFT SIDEBAR -->
     <aside class="sidebar d-none d-md-flex">
@@ -39,7 +40,9 @@
         <!-- MAIN NAV -->
         <nav class="nav flex-column" aria-label="Main">
             <a class="sidebar-link" href="/sessions">Sessions</a>
+            <a class="sidebar-link" href="/tutor/topics">Practice &amp; Progress</a>
         </nav>
+
 
         <!-- BOTTOM NAV -->
         <div class="sidebar-footer">
@@ -80,14 +83,38 @@
             </div>
         </div>
 
-        <!-- OPTIONAL BUTTON GRID AREA (for missions / topics later) -->
-        <div id="interaction-area">
+            <!-- Grade level selector -->
+            <div class="grade-select-box">
+                <label for="grade-level-select" class="grade-label">
+                    Choose your grade:
+                </label>
+                <select id="grade-level-select" class="grade-select">
+                    <option value="1st grade">1st Grade</option>
+                    <option value="2nd grade">2nd Grade</option>
+                    <option value="3rd grade">3rd Grade</option>
+                    <option value="4th grade">4th Grade</option>
+                    <option value="5th grade">5th Grade</option>
+                </select>
+                <small class="grade-hint">
+                    LearnBot will explain math at this grade level.
+                </small>
+            </div>
+
+            <!-- Step-by-step mode toggle -->
+            <div class="step-mode-box">
+                <label class="step-mode-label">
+                    <input type="checkbox" id="step-mode-toggle" checked>
+                    Explain answers step-by-step
+                </label>
+                <small class="step-mode-hint">
+                    When this is on, LearnBot will show numbered steps like a real tutor.
+                </small>
+            </div>
+
+            <!-- existing topic/mission button grid -->
             <div id="button-grid" class="button-grid">
                 <!-- future: Addition / Subtraction buttons, etc. -->
             </div>
-        </div>
-    </main>
-</div>
 
 <!-- Dark-mode logic -->
 <script src="/js/theme.js"></script>
@@ -97,6 +124,7 @@
 
 <!-- Bootstrap JS bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    </main>
+</div>
 </body>
 </html>
-

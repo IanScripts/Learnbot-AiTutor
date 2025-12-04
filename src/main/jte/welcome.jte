@@ -27,6 +27,7 @@
             <a href="/home" class="nav-pill">Home</a>
             <a href="/sessions" class="nav-pill">Sessions</a>
             <a href="/contact" class="nav-pill">Contact</a>
+            <a href="/tutor/topics" class="nav-pill">Practice</a>
         </nav>
     </div>
 </header>

@@ -40,6 +40,13 @@ public class LearnSession {
 
     private final List<Turn> turns = new ArrayList<>();
 
+    // ============================================
+    // Step-by-Step Guided Mode State
+    // ============================================
+    private Integer stepIndex;                     // which step student is on
+    private String currentProblem;                 // main problem text
+    private List<String> steps = new ArrayList<>(); // small guided steps
+
     public LearnSession(Long id,
                         String username,
                         String title,
@@ -86,5 +93,32 @@ public class LearnSession {
     public void addTurn(String role, String content) {
         turns.add(new Turn(role, content, LocalDateTime.now()));
     }
-}
 
+    // ============================================
+    // Guided Mode State Getters/Setters
+    // ============================================
+
+    public Integer getStepIndex() {
+        return stepIndex;
+    }
+
+    public void setStepIndex(Integer stepIndex) {
+        this.stepIndex = stepIndex;
+    }
+
+    public String getCurrentProblem() {
+        return currentProblem;
+    }
+
+    public void setCurrentProblem(String currentProblem) {
+        this.currentProblem = currentProblem;
+    }
+
+    public List<String> getSteps() {
+        return steps;
+    }
+
+    public void setSteps(List<String> steps) {
+        this.steps = steps;
+    }
+}

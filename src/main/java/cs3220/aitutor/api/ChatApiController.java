@@ -5,10 +5,13 @@ import cs3220.aitutor.services.MathTutorService;
 import cs3220.aitutor.services.SessionService;
 import cs3220.aitutor.services.UserContext;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-record ChatRequest(String message, String gradeLevel, String topic, Long sessionId) {}
+// 🔹 now includes stepByStep
+record ChatRequest(String message, String gradeLevel, String topic, Long sessionId, Boolean stepByStep) {}
 
 record ChatResponseDto(String reply, Long sessionId) {}
 
@@ -30,8 +33,8 @@ record SessionDetailDto(
         List<LearnSession.Turn> turns
 ) {}
 
-// 🔹 NEW: request type for the welcome endpoint
-record WelcomeRequest(String gradeLevel, String topic) {}
+// 🔹 request type for the welcome endpoint (now also includes stepByStep)
+record WelcomeRequest(String gradeLevel, String topic, Boolean stepByStep) {}
 
 @RestController
 @RequestMapping("/api")
@@ -55,7 +58,10 @@ public class ChatApiController {
 
         String username = userContext.getCurrentUsername();
         if (username == null) {
-            throw new IllegalStateException("User must be logged in to chat.");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to chat."
+            );
         }
 
         String topic = (request.topic() == null || request.topic().isBlank())
@@ -66,14 +72,21 @@ public class ChatApiController {
                 ? "1st grade"
                 : request.gradeLevel();
 
+        boolean stepByStep = request.stepByStep() != null ? request.stepByStep() : true;
+
         // Create a brand-new session for this user
         String title = topic;
         LearnSession session = sessionService.createSession(username, title, topic, gradeLevel);
 
         // Internal prompt: user never sees this — it is NOT stored as a user turn
+        String styleInstruction = stepByStep
+                ? "Explain ideas using short, clear, numbered steps that match the student's grade level."
+                : "Give clear but concise explanations that match the student's grade level.";
+
         String internalPrompt =
-                "Please introduce yourself as LearnBot, a friendly " + gradeLevel +
-                        " math tutor, and invite the student to ask a math question.";
+                "Please introduce yourself as LearnBot, a friendly " + gradeLevel + " math tutor, " +
+                        "and invite the student to ask a math question. " +
+                        styleInstruction;
 
         // Ask the AI using the internal prompt
         String reply = mathTutorService.getTutoringReply(internalPrompt, gradeLevel, topic);
@@ -89,8 +102,10 @@ public class ChatApiController {
 
         String username = userContext.getCurrentUsername();
         if (username == null) {
-            // Not logged in – you can also return 401 or a custom message
-            throw new IllegalStateException("User must be logged in to chat.");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to chat."
+            );
         }
 
         String topic = (request.topic() == null || request.topic().isBlank())
@@ -100,6 +115,8 @@ public class ChatApiController {
         String gradeLevel = (request.gradeLevel() == null || request.gradeLevel().isBlank())
                 ? "1st grade"
                 : request.gradeLevel();
+
+        boolean stepByStep = request.stepByStep() != null ? request.stepByStep() : true;
 
         LearnSession session;
         Long sessionId = request.sessionId();
@@ -114,11 +131,20 @@ public class ChatApiController {
                     .orElseGet(() -> sessionService.createSession(username, topic, topic, gradeLevel));
         }
 
-        // store user turn
+        // store the raw user message (not the augmented one)
         sessionService.addTurn(session.getId(), "user", request.message());
 
+        // add tutoring style instructions when step-by-step mode is on
+        String userContent = request.message();
+        if (stepByStep) {
+            userContent =
+                    "Explain the solution in short, clear, numbered steps appropriate for "
+                            + gradeLevel + ". Then answer this question:\n\n"
+                            + request.message();
+        }
+
         String reply = mathTutorService.getTutoringReply(
-                request.message(),
+                userContent,
                 gradeLevel,
                 topic
         );
@@ -133,7 +159,10 @@ public class ChatApiController {
     public List<SessionSummaryDto> listSessions() {
         String username = userContext.getCurrentUsername();
         if (username == null) {
-            throw new IllegalStateException("User must be logged in to list sessions.");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to list sessions."
+            );
         }
 
         return sessionService.listSessionsForUser(username).stream()
@@ -152,11 +181,17 @@ public class ChatApiController {
     public SessionDetailDto getSession(@PathVariable long id) {
         String username = userContext.getCurrentUsername();
         if (username == null) {
-            throw new IllegalStateException("User must be logged in to view a session.");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to view a session."
+            );
         }
 
         LearnSession s = sessionService.findByIdForUser(id, username)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found for this user."));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Session not found for this user."
+                ));
 
         return new SessionDetailDto(
                 s.getId(),
@@ -172,13 +207,18 @@ public class ChatApiController {
     public void deleteSession(@PathVariable long id) {
         String username = userContext.getCurrentUsername();
         if (username == null) {
-            throw new IllegalStateException("User must be logged in to delete a session.");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to delete a session."
+            );
         }
 
         boolean deleted = sessionService.deleteSessionForUser(id, username);
         if (!deleted) {
-            throw new IllegalArgumentException("Session not found for this user.");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Session not found for this user."
+            );
         }
     }
-
 }
