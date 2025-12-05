@@ -10,8 +10,18 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-// 🔹 now includes stepByStep
-record ChatRequest(String message, String gradeLevel, String topic, Long sessionId, Boolean stepByStep) {}
+record GameModeStatsDto(long gameAttempts) {}
+
+// 🔹 now includes stepByStep, persona, miniLecture
+record ChatRequest(
+        String message,
+        String gradeLevel,
+        String topic,
+        Long sessionId,
+        Boolean stepByStep,
+        String persona,
+        Boolean miniLecture
+) {}
 
 record ChatResponseDto(String reply, Long sessionId) {}
 
@@ -33,8 +43,13 @@ record SessionDetailDto(
         List<LearnSession.Turn> turns
 ) {}
 
-// 🔹 request type for the welcome endpoint (now also includes stepByStep)
-record WelcomeRequest(String gradeLevel, String topic, Boolean stepByStep) {}
+// 🔹 Welcome request now also carries persona
+record WelcomeRequest(
+        String gradeLevel,
+        String topic,
+        Boolean stepByStep,
+        String persona
+) {}
 
 @RestController
 @RequestMapping("/api")
@@ -52,7 +67,6 @@ public class ChatApiController {
         this.userContext = userContext;
     }
 
-    // 🔹 welcome endpoint used when a chat starts
     @PostMapping("/chat-welcome")
     public ChatResponseDto chatWelcome(@RequestBody WelcomeRequest request) {
 
@@ -72,26 +86,39 @@ public class ChatApiController {
                 ? "1st grade"
                 : request.gradeLevel();
 
-        boolean stepByStep = request.stepByStep() != null ? request.stepByStep() : true;
+        boolean stepByStep = (request.stepByStep() == null) || request.stepByStep();
+        String difficulty = stepByStep ? "guided" : "normal";
 
-        // Create a brand-new session for this user
-        String title = topic;
-        LearnSession session = sessionService.createSession(username, title, topic, gradeLevel);
+        String persona = request.persona(); // may be null, service will default
 
-        // Internal prompt: user never sees this — it is NOT stored as a user turn
-        String styleInstruction = stepByStep
-                ? "Explain ideas using short, clear, numbered steps that match the student's grade level."
-                : "Give clear but concise explanations that match the student's grade level.";
+        LearnSession session = sessionService.createSession(
+                username,
+                topic,       // title
+                topic,       // topic
+                gradeLevel,
+                "teacher",   // mode
+                difficulty
+        );
 
-        String internalPrompt =
+        // store persona choice in the session
+        session.setPersona(persona);
+
+        // This acts as the "user message" instructing the teacher how to greet
+        String welcomePrompt =
                 "Please introduce yourself as LearnBot, a friendly " + gradeLevel + " math tutor, " +
-                        "and invite the student to ask a math question. " +
-                        styleInstruction;
+                        "and invite the student to ask a math question.";
 
-        // Ask the AI using the internal prompt
-        String reply = mathTutorService.getTutoringReply(internalPrompt, gradeLevel, topic);
+        // Use Teacher Mode generator
+        String reply = mathTutorService.generateTeacherReply(
+                welcomePrompt,
+                gradeLevel,
+                topic,
+                stepByStep,
+                persona,
+                false  // miniLecture
+        );
 
-        // Only store the bot greeting so the transcript starts clean
+        // Store bot greeting
         sessionService.addTurn(session.getId(), "bot", reply);
 
         return new ChatResponseDto(reply, session.getId());
@@ -109,47 +136,71 @@ public class ChatApiController {
         }
 
         String topic = (request.topic() == null || request.topic().isBlank())
-                ? "General math practice"
+                ? "General Math"
                 : request.topic();
 
         String gradeLevel = (request.gradeLevel() == null || request.gradeLevel().isBlank())
                 ? "1st grade"
                 : request.gradeLevel();
 
-        boolean stepByStep = request.stepByStep() != null ? request.stepByStep() : true;
+        boolean stepByStep = (request.stepByStep() == null) || request.stepByStep();
+        String difficulty = stepByStep ? "guided" : "normal";
 
-        LearnSession session;
+        String persona = request.persona(); // "coach", "wizard", "space", etc.
+        boolean miniLecture = Boolean.TRUE.equals(request.miniLecture());
+
         Long sessionId = request.sessionId();
+        LearnSession session;
 
         if (sessionId == null) {
-            // NEW session for this user
-            String title = topic;
-            session = sessionService.createSession(username, title, topic, gradeLevel);
+
+            session = sessionService.createSession(
+                    username,
+                    topic,
+                    topic,
+                    gradeLevel,
+                    "teacher",
+                    difficulty
+            );
         } else {
-            // Existing session – verify it belongs to this user
+            // Validate existing session
             session = sessionService.findByIdForUser(sessionId, username)
-                    .orElseGet(() -> sessionService.createSession(username, topic, topic, gradeLevel));
+                    .orElseGet(() -> sessionService.createSession(
+                            username,
+                            topic,
+                            topic,
+                            gradeLevel,
+                            "teacher",
+                            difficulty
+                    ));
         }
 
-        // store the raw user message (not the augmented one)
-        sessionService.addTurn(session.getId(), "user", request.message());
+        // Update unified metadata each turn
+        session.setTopic(topic);
+        session.setGradeLevel(gradeLevel);
+        session.setMode("teacher");
+        session.setDifficulty(difficulty);
+        session.setPersona(persona); // 🔹 remember persona choice
 
-        // add tutoring style instructions when step-by-step mode is on
-        String userContent = request.message();
-        if (stepByStep) {
-            userContent =
-                    "Explain the solution in short, clear, numbered steps appropriate for "
-                            + gradeLevel + ". Then answer this question:\n\n"
-                            + request.message();
-        }
+        // Store USER message
+        String rawMessage = request.message();
+        String storedUserMessage =
+                (miniLecture && (rawMessage == null || rawMessage.isBlank()))
+                        ? "[Mini lecture requested]"
+                        : rawMessage;
+        sessionService.addTurn(session.getId(), "user", storedUserMessage);
 
-        String reply = mathTutorService.getTutoringReply(
-                userContent,
+        // Ask AI using Teacher Mode generator
+        String reply = mathTutorService.generateTeacherReply(
+                rawMessage,
                 gradeLevel,
-                topic
+                topic,
+                stepByStep,
+                persona,
+                miniLecture
         );
 
-        // store bot turn
+        // Store BOT message
         sessionService.addTurn(session.getId(), "bot", reply);
 
         return new ChatResponseDto(reply, session.getId());
@@ -175,6 +226,20 @@ public class ChatApiController {
                         sessionService.buildSummary(s)
                 ))
                 .toList();
+    }
+
+    @GetMapping("/gamemode-stats")
+    public GameModeStatsDto gameModeStats() {
+        String username = userContext.getCurrentUsername();
+        if (username == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User must be logged in to view game stats."
+            );
+        }
+
+        long attempts = sessionService.countGameModeAttemptsForUser(username);
+        return new GameModeStatsDto(attempts);
     }
 
     @GetMapping("/sessions/{id}")
@@ -222,3 +287,4 @@ public class ChatApiController {
         }
     }
 }
+

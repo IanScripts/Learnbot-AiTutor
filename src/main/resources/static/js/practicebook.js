@@ -1,341 +1,295 @@
 console.log("practicebook.js loaded");
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadProblems(6); // start with 6 problems
+let currentSessionId = null;
+let currentGradeLevel = "1st grade";
+let currentTopic = "";
 
-    const newSetBtn = document.getElementById("btn-new-set");
-    if (newSetBtn) {
-        newSetBtn.addEventListener("click", () => loadProblems(6));
+
+const topicChoicesByGrade = {
+    "1st grade": [
+        "Counting to 100",
+        "Addition within 20",
+        "Subtraction within 20",
+        "Word problems"
+    ],
+    "2nd grade": [
+        "Addition within 100",
+        "Subtraction within 100",
+        "Measurement & time",
+        "Word problems"
+    ],
+    "3rd grade": [
+        "Multiplication basics",
+        "Division basics",
+        "Fractions (1/2, 1/3, 1/4)",
+        "Area of rectangles"
+    ],
+    "4th grade": [
+        "Multiplying 2-digit numbers",
+        "Long division",
+        "Fractions & mixed numbers",
+        "Decimals (tenths & hundredths)"
+    ],
+    "5th grade": [
+        "Adding & subtracting fractions",
+        "Multiplying fractions",
+        "Decimals",
+        "Coordinate plane basics"
+    ]
+};
+
+function renderTopicGrid(preselectedTopic) {
+    const grid = document.getElementById("topic-grid");
+    const topicInput = document.getElementById("topic-input");
+    const gradeSelect = document.getElementById("grade-select");
+
+    if (!grid || !topicInput || !gradeSelect) return;
+
+    const grade = gradeSelect.value || currentGradeLevel;
+    const topics = topicChoicesByGrade[grade] || [];
+
+    grid.innerHTML = "";
+
+    topics.forEach((topic, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+
+        // colored topic pill
+        btn.className = "topic-btn topic-color-" + (index % 4);
+        btn.textContent = topic;
+
+        // If this topic matches the current one, mark it as selected
+        if (preselectedTopic && preselectedTopic === topic) {
+            btn.classList.add("selected");
+        }
+
+        btn.addEventListener("click", () => {
+            // Clear selection from all buttons first
+            grid.querySelectorAll(".topic-btn").forEach(b =>
+                b.classList.remove("selected")
+            );
+
+            btn.classList.add("selected");
+            currentTopic = topic;
+            topicInput.value = topic;
+
+            // First question for this topic
+            startGame();
+        });
+
+        grid.appendChild(btn);
+    });
+
+    // If we have a currentTopic that matches one of the buttons, mark it
+    if (currentTopic) {
+        grid.querySelectorAll(".topic-btn").forEach(b => {
+            if (b.textContent === currentTopic) {
+                b.classList.add("selected");
+            }
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const nextBtn = document.getElementById("next-btn");
+    const gradeSelect = document.getElementById("grade-select");
+    const topicInput = document.getElementById("topic-input");
+
+    // Grade select init
+    if (gradeSelect) {
+        currentGradeLevel = gradeSelect.value || currentGradeLevel;
+
+        // When grade changes, update and re-render topic grid
+        gradeSelect.addEventListener("change", () => {
+            currentGradeLevel = gradeSelect.value;
+            currentTopic = "";
+            if (topicInput) topicInput.value = "";
+            renderTopicGrid(null);
+
+            // Reset prompt, since they changed grade
+            const questionText = document.getElementById("question-text");
+            const feedback = document.getElementById("feedback-text");
+            if (questionText) {
+                questionText.textContent = "Pick a topic to get your first question!";
+            }
+            if (feedback) {
+                feedback.textContent = "";
+            }
+        });
+    }
+
+    if (topicInput) {
+        // keep state in sync if something ever changes the hidden input
+        topicInput.addEventListener("input", () => {
+            currentTopic = topicInput.value.trim();
+        });
+    }
+
+    // Initial render of the 4-square grid
+    renderTopicGrid(currentTopic);
+
+    // NEXT QUESTION button: same topic & grade, new question
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            startGame();
+        });
     }
 });
 
-/* -----------------------------------------------------------
-   ===  MULTIPLE CHOICE MODE — HELPERS & ICONS  ===
------------------------------------------------------------ */
 
-function getChoiceIcon(index) {
-    const icons = ["🔵", "🟡", "❤️", "💚"];
-    return icons[index] || "✨";
-}
+async function startGame() {
+    const feedback = document.getElementById("feedback-text");
+    const gradeSelect = document.getElementById("grade-select");
 
-function showMCSection() {
-    document.getElementById("mc-section").style.display = "block";
-    document.getElementById("problems-container").style.display = "none";
-}
-
-function exitMC() {
-    document.getElementById("mc-section").style.display = "none";
-    document.getElementById("problems-container").style.display = "flex";
-}
-
-/* -----------------------------------------------------------
-   ===  START MC MODE  ===
------------------------------------------------------------ */
-async function startMC(topic, grade) {
-    const res = await fetch("/api/mc/start", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            topic: topic,
-            gradeLevel: grade
-        })
-    });
-    const data = await res.json();
-    renderMCQuestion(data);
-}
-
-/* -----------------------------------------------------------
-   ===  RENDER MC QUESTION  ===
------------------------------------------------------------ */
-function renderMCQuestion(q) {
-    showMCSection();
-
-    const colors = ["mc-blue", "mc-yellow", "mc-pink", "mc-green"];
-
-    document.getElementById("mc-question-box").innerHTML = `
-        <h3 class="fw-bold mb-3">🤓 ${q.question}</h3>
-    `;
-
-    document.getElementById("mc-choices-box").innerHTML =
-        q.choices.map((choice, i) => `
-            <div class="mc-card ${colors[i]}"
-                onclick="submitMC('${choice}', ${q.sessionId}, this)">
-                ${getChoiceIcon(i)} ${choice}
-            </div>
-        `).join("");
-}
-
-/* -----------------------------------------------------------
-   ===  SUBMIT MC ANSWER  ===
------------------------------------------------------------ */
-async function submitMC(answer, sessionId, element) {
-
-    // Prevent double-click
-    document.querySelectorAll(".mc-card").forEach(btn => btn.style.pointerEvents = "none");
-
-    const res = await fetch("/api/mc/answer", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            sessionId: sessionId,
-            userAnswer: answer
-        })
-    });
-
-    /* -----------------------------------------------------------
-   === GUIDED (STEP-BY-STEP) MODE JS ===
------------------------------------------------------------ */
-
-    async function startGuidedLesson(topic, grade) {
-        const res = await fetch("/api/chat-step/start", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ topic, grade })
-        });
-
-        const data = await res.json();
-        renderGuidedMessage(data);
+    if (gradeSelect) {
+        currentGradeLevel = gradeSelect.value || currentGradeLevel;
     }
 
-    function renderGuidedMessage(data) {
-        showMCSection(); // reuse MC section UI container
-
-        document.getElementById("mc-question-box").innerHTML = `
-        <h3 class="fw-bold mb-3">👣 ${data.botMessage}</h3>
-    `;
-
-        document.getElementById("mc-choices-box").innerHTML = `
-        <div class="input-group">
-            <input id="guided-input" type="text" class="form-control" placeholder="Your answer…" />
-            <button class="btn btn-primary" onclick="submitGuided(${data.sessionId})">
-                ➡️ Next
-            </button>
-        </div>
-    `;
+    // If no topic chosen yet, gently bail
+    if (!currentTopic || currentTopic.trim().length === 0) {
+        if (feedback) {
+            feedback.textContent = "Pick a topic first to start your game!";
+        }
+        return;
     }
 
-    async function submitGuided(sessionId) {
-        const msg = document.getElementById("guided-input").value.trim();
-        if (!msg) return;
-
-        const res = await fetch("/api/chat-step/next", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ sessionId, userMessage: msg })
-        });
-
-        const data = await res.json();
-        renderGuidedMessage(data);
+    if (feedback) {
+        feedback.textContent = "Thinking of a good question for you...";
     }
-
-
-
-    const data = await res.json();
-
-    // Correct
-    if (data.correct) {
-        element.classList.add("mc-correct");
-        element.innerHTML = "⭐😊 " + element.innerHTML;
-
-        setTimeout(() => {
-            renderMCQuestion(data.next);
-        }, 700);
-
-    } else {
-        // Wrong
-        element.classList.add("mc-wrong");
-
-        setTimeout(() => {
-            alert("❌😅 Try again!\n\n" + data.explanation);
-            renderMCQuestion(data.next);
-        }, 600);
-    }
-}
-
-/* -----------------------------------------------------------
-   ===  PRACTICE PROBLEMS (your original code)  ===
------------------------------------------------------------ */
-
-async function fetchProblem() {
-    const res = await fetch("/api/practice/next?mode=add20");
-    if (!res.ok) {
-        throw new Error("Failed to fetch practice problem");
-    }
-    return await res.json(); // { question, correctAnswer }
-}
-
-async function loadProblems(count) {
-    const container = document.getElementById("problems-container");
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="col-12 text-center text-muted py-3">
-            Loading practice problems...
-        </div>
-    `;
-
-    const problemCards = [];
 
     try {
-        for (let i = 0; i < count; i++) {
-            const problem = await fetchProblem();
-            problemCards.push(problem);
-        }
-
-        container.innerHTML = "";
-
-        problemCards.forEach((problem, index) => {
-            const col = createProblemCard(problem, index + 1);
-            container.appendChild(col);
+        const res = await fetch("/api/mc/start", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                topic: currentTopic,
+                gradeLevel: currentGradeLevel
+            })
         });
 
+        if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+        }
+
+        const data = await res.json();
+        renderQuestion(data);
     } catch (err) {
-        console.error("Error loading problems:", err);
-        container.innerHTML = `
-            <div class="col-12 text-center text-danger py-3">
-                Oops, I couldn't load your problems. Please try again.
-            </div>
-        `;
+        console.error("Error starting game mode:", err);
+        if (feedback) {
+            feedback.textContent = "Sorry, I couldn't start the game. Please try again.";
+        }
     }
 }
 
-function createProblemCard(problem, number) {
-    const col = document.createElement("div");
-    col.className = "col-md-6 col-lg-4";
 
-    const card = document.createElement("div");
-    card.className = "problem-card card h-100 p-3 d-flex flex-column";
+function renderQuestion(q) {
+    const questionText = document.getElementById("question-text");
+    const choicesDiv = document.getElementById("choices");
+    const feedback = document.getElementById("feedback-text");
 
-    const title = document.createElement("h3");
-    title.className = "h6 text-muted mb-1";
-    title.textContent = `Problem #${number}`;
+    if (!questionText || !choicesDiv) return;
 
-    const question = document.createElement("p");
-    question.className = "fs-4 mb-2";
-    question.textContent = problem.question;
+    currentSessionId = q.sessionId;
 
-    const inputGroup = document.createElement("div");
-    inputGroup.className = "input-group mb-2";
+    // Add emojis to question text
+    const emojis = ["✏️", "⭐", "🧠", "🔢", "🎯", "🏆"];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-    const input = document.createElement("input");
-    input.type = "number";
-    input.className = "form-control";
-    input.placeholder = "Your answer";
+    const decoratedQuestion = q.question
+        ? `${q.question} ${emoji}`
+        : "Let's practice some math! ✏️";
 
-    const checkBtn = document.createElement("button");
-    checkBtn.type = "button";
-    checkBtn.className = "btn btn-primary";
-    checkBtn.textContent = "Check";
+    questionText.textContent = decoratedQuestion;
 
-    inputGroup.appendChild(input);
-    inputGroup.appendChild(checkBtn);
+    if (feedback) {
+        feedback.textContent = "";
+    }
 
-    const hintBtn = document.createElement("button");
-    hintBtn.type = "button";
-    hintBtn.className = "btn btn-outline-secondary btn-sm mt-1";
-    hintBtn.textContent = "Need a hint? 💡";
+    choicesDiv.innerHTML = "";
 
-    const feedback = document.createElement("div");
-    feedback.className = "mt-2 small";
+    if (!Array.isArray(q.choices) || q.choices.length === 0) {
+        const msg = document.createElement("p");
+        msg.className = "text-muted";
+        msg.textContent = "I couldn't find answer choices. Please try again.";
+        choicesDiv.appendChild(msg);
+        return;
+    }
 
-    const hintBox = document.createElement("div");
-    hintBox.className = "mt-2 small text-muted";
+    const letters = ["A", "B", "C", "D"];
 
-    card.appendChild(title);
-    card.appendChild(question);
-    card.appendChild(inputGroup);
-    card.appendChild(hintBtn);
-    card.appendChild(feedback);
-    card.appendChild(hintBox);
+    q.choices.forEach((choice, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-outline-primary w-100 text-start";
 
-    // === Event handlers ===
+        const letter = letters[index] || "";
+        const label = `${letter}) ${choice}`;
 
-    checkBtn.addEventListener("click", async () => {
-        const answer = input.value.trim();
-        if (!answer) {
-            feedback.className = "mt-2 small text-danger";
-            feedback.textContent = "Try typing an answer first!";
-            return;
+        btn.textContent = label;
+
+        // Send raw choice text to backend
+        btn.addEventListener("click", () => submitAnswer(choice, btn));
+
+        choicesDiv.appendChild(btn);
+    });
+}
+
+
+async function submitAnswer(answer, buttonEl) {
+    if (!currentSessionId) return;
+
+    const feedback = document.getElementById("feedback-text");
+    const allButtons = document.querySelectorAll("#choices button");
+    allButtons.forEach(b => b.disabled = true);
+
+    try {
+        const res = await fetch("/api/mc/answer", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                sessionId: currentSessionId,
+                userAnswer: answer
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error("HTTP " + res.status);
         }
 
-        try {
-            const res = await fetch("/api/practice/check", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    question: problem.question,
-                    userAnswer: answer
-                })
-            });
+        const data = await res.json();
 
-            if (!res.ok) throw new Error("Failed to check answer");
-
-            const data = await res.json(); // { correct, correctAnswer, stats }
-
+        if (feedback) {
             if (data.correct) {
-                feedback.className = "mt-2 small text-success";
-                feedback.textContent = `Nice job! ✅ ${problem.question.replace("?", "")} ${data.correctAnswer}.`;
+                feedback.textContent = "✅ Nice job! " + (data.explanation || "");
             } else {
-                feedback.className = "mt-2 small text-danger";
-                feedback.textContent = `Not quite yet. Try again!`;
+                feedback.textContent = "❌ Not quite. " + (data.explanation || "Let's try another one!");
             }
+        }
 
-            if (data.stats) updateStats(data.stats);
+        if (buttonEl) {
+            buttonEl.classList.remove("btn-outline-primary");
+            buttonEl.classList.add(data.correct ? "btn-success" : "btn-danger");
+        }
 
-        } catch (err) {
-            console.error("Error checking answer:", err);
-            feedback.className = "mt-2 small text-danger";
+        // If backend sends a next question automatically, still support it
+        if (data.next) {
+            setTimeout(() => {
+                renderQuestion(data.next);
+            }, 800);
+        }
+    } catch (err) {
+        console.error("Error submitting answer:", err);
+        if (feedback) {
             feedback.textContent = "Something went wrong. Please try again.";
         }
-    });
-
-    hintBtn.addEventListener("click", async () => {
-        hintBox.className = "mt-2 small text-muted";
-        hintBox.textContent = "Thinking of a hint... 💭";
-
-        try {
-            const res = await fetch("/api/practice/hint", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    problem: problem.question,
-                    userAnswer: input.value.trim()
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to get hint");
-
-            const data = await res.json();
-            hintBox.textContent = data.hintText;
-
-        } catch (err) {
-            console.error("Error getting hint:", err);
-            hintBox.className = "mt-2 small text-danger";
-            hintBox.textContent = "I couldn't get a hint right now. Please try again.";
-        }
-    });
-
-    col.appendChild(card);
-    return col;
-}
-
-function updateStats(stats) {
-    const totalEl = document.getElementById("stats-total");
-    const correctEl = document.getElementById("stats-correct");
-    const accuracyEl = document.getElementById("stats-accuracy");
-    const bestStreakEl = document.getElementById("stats-best-streak");
-
-    if (!totalEl) return;
-
-    totalEl.textContent = stats.totalAnswered ?? 0;
-    correctEl.textContent = stats.totalCorrect ?? 0;
-    bestStreakEl.textContent = stats.bestStreak ?? 0;
-
-    if (stats.totalAnswered && stats.totalAnswered > 0) {
-        const accuracy = Math.round((stats.totalCorrect / stats.totalAnswered) * 100);
-        accuracyEl.textContent = accuracy + "%";
-    } else {
-        accuracyEl.textContent = "—";
+    } finally {
+        allButtons.forEach(b => b.disabled = false);
     }
 }
+
+
+
+
+
+
 
