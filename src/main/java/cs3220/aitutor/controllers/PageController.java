@@ -2,9 +2,8 @@ package cs3220.aitutor.controllers;
 
 import cs3220.aitutor.services.UserContext;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.ui.Model;
-
+import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class PageController {
@@ -15,59 +14,65 @@ public class PageController {
         this.userContext = userContext;
     }
 
-    // Public welcome page
+
     @GetMapping("/")
-    public String welcome() {
-        return "welcome"; // welcome.jte
+    public String root() {
+        return "welcome";              // welcome.jte
     }
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return "welcome";              // welcome.jte
+    }
+
 
     @GetMapping("/home")
-    public String home() {
-        if (userContext.getCurrentUsername() == null) {
+    public String home(Model model) {
+        String username = userContext.getCurrentUsername();
+        if (username == null) {
             return "redirect:/login";
         }
-        return "Homepage"; // Homepage.jte
+        model.addAttribute("currentUser", username);
+        return "home";                 // home.jte (mode selector)
     }
 
-    @GetMapping("/sessions")
-    public String sessions() {
-        if (userContext.getCurrentUsername() == null) {
+
+    @GetMapping("/learn")
+    public String teacherMode(Model model) {
+        String username = userContext.getCurrentUsername();
+        if (username == null) {
             return "redirect:/login";
         }
-        return "sessions"; // sessions.jte
+        model.addAttribute("currentUser", username);
+        return "Homepage";             // Homepage.jte (chat UI)
     }
 
-    @GetMapping("/practice-book")
-    public String practiceBook() {
-        if (userContext.getCurrentUsername() == null) {
-            return "redirect:/login";
-        }
-        return "practicebook"; // practicebook.jte
-    }
-
-    @GetMapping("/settings")
-    public String settings() {
-        if (userContext.getCurrentUsername() == null) {
-            return "redirect:/login";
-        }
-        return "settings"; // settings.jte
-    }
-
-    @GetMapping("/contact")
-        public String contact() {
-            return "contact";  // contact.jte
-        }
 
     @GetMapping("/practicebook")
     public String practiceBook(Model model) {
-        if (userContext.getCurrentUsername() == null) {
+        String username = userContext.getCurrentUsername();
+        if (username == null) {
             return "redirect:/login";
         }
-        model.addAttribute("currentUser", userContext.getCurrentUsername());
-        return "practicebook";  // practicebook.jte
+        model.addAttribute("currentUser", username);
+        return "practicebook";         // practicebook.jte
     }
 
+    @GetMapping("/sessions")
+    public String sessions(Model model) {
+        String username = userContext.getCurrentUsername();
+        if (username == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("currentUser", username);
+        return "sessions";             // sessions.jte
+    }
+    @GetMapping("/contact")
+    public String contact() {
+        return "contact";              // contact.jte
+    }
 }
+
 
 
 

@@ -1,8 +1,9 @@
-console.log("sessions.js loaded");
+// session.js
+console.log("session.js loaded");
 
 document.addEventListener("DOMContentLoaded", loadPastSessions);
 
-// 🔹 helper that calls backend to delete a session, then remove from UI
+
 async function deleteSession(id, listItem) {
     if (!confirm("Are you sure you want to delete this Math Mission?")) {
         return;
@@ -17,7 +18,6 @@ async function deleteSession(id, listItem) {
             throw new Error("HTTP " + res.status);
         }
 
-        // Remove the session from the UI
         if (listItem && listItem.parentElement) {
             listItem.parentElement.removeChild(listItem);
         }
@@ -27,40 +27,30 @@ async function deleteSession(id, listItem) {
     }
 }
 
+// Load all sessions for the current user
 async function loadPastSessions() {
     const list = document.getElementById("past-sessions");
-    if (!list) {
-        console.warn("No #past-sessions element found.");
-        return;
-    }
+    if (!list) return;
 
-    // Show loading while we fetch
     list.innerHTML = `
         <li class="session-item">
-            <span>Loading…</span>
+            <span>Loading your Math Missions…</span>
         </li>
     `;
 
     try {
-        const response = await fetch("/api/sessions", {
-            headers: {
-                "Accept": "application/json"
-            }
-        });
-
-        console.log("GET /api/sessions -> status", response.status);
-
-        if (!response.ok) {
-            throw new Error("HTTP " + response.status);
+        const res = await fetch("/api/sessions");
+        if (!res.ok) {
+            throw new Error("HTTP " + res.status);
         }
 
-        const sessions = await response.json();
+        const sessions = await res.json();
         console.log("sessions payload:", sessions);
 
         if (!Array.isArray(sessions) || sessions.length === 0) {
             list.innerHTML = `
                 <li class="session-item">
-                    <span>You don’t have any sessions yet. Try asking LearnBot a math question on the Home page!</span>
+                    <span>You don’t have any sessions yet. Try asking LearnBot a math question on the Teacher Mode page!</span>
                 </li>
             `;
             return;
@@ -69,11 +59,11 @@ async function loadPastSessions() {
         list.innerHTML = "";
 
         sessions.forEach(s => {
-            // Your record fields: id, title, topic, createdAt, gradeLevel, summary
+            // Fields from SessionSummaryDto: id, title, topic, createdAt, gradeLevel, summary
             const li = document.createElement("li");
             li.className = "session-item";
 
-            // ---- OPEN BUTTON ----
+
             const openBtn = document.createElement("button");
             openBtn.type = "button";
             openBtn.className = "session-pill";
@@ -84,16 +74,15 @@ async function loadPastSessions() {
                 ? `${title} — ${created}`
                 : title;
 
-            // 👉 UPDATED: open Practice Book for this mission
             openBtn.addEventListener("click", () => {
                 const sessionId = s.id;
-                console.log("Opening session", sessionId);
+                console.log("Opening teacher session", sessionId);
 
                 const topic = s.topic ? encodeURIComponent(s.topic) : "";
                 const grade = s.gradeLevel ? encodeURIComponent(s.gradeLevel) : "";
 
-                // /practicebook?sessionId=ID&topic=...&grade=...
-                let url = `/practicebook?sessionId=${encodeURIComponent(sessionId)}`;
+
+                let url = `/learn?sessionId=${encodeURIComponent(sessionId)}`;
                 if (topic) {
                     url += `&topic=${topic}`;
                 }
@@ -104,7 +93,7 @@ async function loadPastSessions() {
                 window.location.href = url;
             });
 
-            // ---- DELETE BUTTON ----
+
             const deleteBtn = document.createElement("button");
             deleteBtn.type = "button";
             deleteBtn.className = "session-delete-btn";

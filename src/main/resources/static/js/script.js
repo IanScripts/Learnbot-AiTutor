@@ -1,11 +1,10 @@
 let currentSessionId = null;
 let currentTopic = null;
 let currentGradeLevel = '1st grade';
+let currentPersona = 'coach';
 let stepByStepMode = true; // default: ON
 
-/**
- * Map of grade levels to available math topics.
- */
+
 const gradeTopics = {
     '1st grade': [
         'Counting to 100',
@@ -39,22 +38,14 @@ const gradeTopics = {
     ]
 };
 
-/**
- * Append a message bubble to the chat window.
- * @param {string} text
- * @param {'user'|'bot'} sender
- */
+
 function appendMessage(text, sender) {
     const chatWindow = document.getElementById('chat-window');
     if (!chatWindow) return;
 
     const bubble = document.createElement('div');
     bubble.classList.add('chat-message');
-    if (sender === 'user') {
-        bubble.classList.add('user-message');
-    } else {
-        bubble.classList.add('bot-message');
-    }
+    bubble.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
 
     // Simple newline handling
     text.split('\n').forEach((line, index) => {
@@ -68,70 +59,81 @@ function appendMessage(text, sender) {
     chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-/**
- * Read query string param from URL.
- */
+
+function appendLoadingBubble(text = 'Thinking...') {
+    const chatWindow = document.getElementById('chat-window');
+    if (!chatWindow) return null;
+
+    const loadingBubble = document.createElement('div');
+    loadingBubble.classList.add('chat-message', 'bot-message');
+    loadingBubble.textContent = text;
+    chatWindow.appendChild(loadingBubble);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return loadingBubble;
+}
+
+
 function getQueryParam(name) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
 }
 
-/**
- * Automatically start a short, kid-friendly practice question when a topic is chosen.
- * This uses the same /api/chat endpoint as normal user messages, but sends a
- * pre-built prompt so students don't have to type anything to get started.
- */
-async function autoStartTopicPractice(topic) {
+
+async function requestMiniLectureForCurrentSelection(options = {}) {
+    const { newSession = false, clearChat = false } = options;
+
+    if (!currentTopic) {
+        console.warn('No topic selected, skipping mini-lecture.');
+        return;
+    }
+
     const chatWindow = document.getElementById('chat-window');
     if (!chatWindow) return;
 
-    const loadingBubble = document.createElement('div');
-    loadingBubble.classList.add('chat-message', 'bot-message');
-    loadingBubble.textContent = "Let me think of a good practice question...";
-    chatWindow.appendChild(loadingBubble);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    if (clearChat) {
+        chatWindow.innerHTML = '';
+    }
 
-    const autoPrompt = `Please start a fun, kid-friendly ${currentGradeLevel} math practice on "${topic}". ` +
-        `Ask one clear practice question first and then wait for the student's answer. ` +
-        `Use simple language, and when step-by-step mode is ON, be ready to explain the solution in numbered steps.`;
+    const loadingBubble = appendLoadingBubble('Let me prepare a short lesson...');
 
     try {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                message: autoPrompt,
+                message: "",
                 gradeLevel: currentGradeLevel,
-                topic: topic || currentTopic || 'General math practice',
-                sessionId: currentSessionId,
-                stepByStep: stepByStepMode
+                topic: currentTopic || 'General math practice',
+                sessionId: newSession ? null : currentSessionId,
+                stepByStep: stepByStepMode,
+                persona: currentPersona,
+                miniLecture: true
             })
         });
 
         if (!response.ok) {
-            throw new Error("HTTP " + response.status);
+            throw new Error('Mini-lecture request failed: ' + response.status);
         }
 
         const data = await response.json();
-        loadingBubble.remove();
+        if (loadingBubble) loadingBubble.remove();
 
         if (data.sessionId != null) {
             currentSessionId = data.sessionId;
             const url = new URL(window.location.href);
             url.searchParams.set('sessionId', currentSessionId);
+            url.searchParams.set('topic', encodeURIComponent(currentTopic));
             window.history.replaceState({}, '', url);
         }
 
         appendMessage(data.reply, 'bot');
     } catch (err) {
-        console.error('Error auto-starting topic practice:', err);
-        loadingBubble.textContent = "Hmm, I had trouble starting that practice. Try asking me a math question!";
+        console.error('Error requesting mini-lecture:', err);
+        if (loadingBubble) loadingBubble.remove();
+        appendMessage('Sorry, I could not get a mini-lecture right now.', 'bot');
     }
 }
 
-/*
- * Render the topic buttons for the current grade level.
- */
 function renderTopicsForGrade() {
     const container = document.getElementById('button-grid');
     if (!container) return;
@@ -160,97 +162,25 @@ function renderTopicsForGrade() {
             allBtns.forEach(b => b.classList.remove('topic-btn-active'));
             btn.classList.add('topic-btn-active');
 
-            // Clear the chat and reset the session so this topic feels like a fresh lesson
-            const chatWindow = document.getElementById('chat-window');
-            if (chatWindow) {
-                chatWindow.innerHTML = '';
-            }
-
+            // Start a fresh session & lecture for this topic
             currentSessionId = null;
             const url = new URL(window.location.href);
             url.searchParams.delete('sessionId');
+            url.searchParams.set('topic', encodeURIComponent(currentTopic));
             window.history.replaceState({}, '', url);
 
-            appendMessage(`Let's practice: ${topic}`, 'bot');
-
-            // Auto-start a kid-friendly practice question for this topic
-            autoStartTopicPractice(topic);
+            requestMiniLectureForCurrentSelection({
+                newSession: true,
+                clearChat: true
+            });
         });
 
         container.appendChild(btn);
     });
-
 }
 
-/**
- * Send the user's message to /api/chat and show the AI response.
- */
-async function sendUserMessage() {
-    const input = document.getElementById('user-message-input');
-    if (!input) return;
-
-    const text = input.value.trim();
-    if (!text) return;
-
-    // Show user bubble
-    appendMessage(text, 'user');
-    input.value = '';
-
-    const chatWindow = document.getElementById('chat-window');
-
-    // Temporary "thinking" bubble
-    const loadingBubble = document.createElement('div');
-    loadingBubble.classList.add('chat-message', 'bot-message');
-    loadingBubble.textContent = "Let me think about that...";
-    chatWindow.appendChild(loadingBubble);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: text,
-                gradeLevel: currentGradeLevel,
-                topic: currentTopic || 'General math practice',
-                sessionId: currentSessionId,
-                stepByStep: stepByStepMode    // 👈 NEW
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error("HTTP " + response.status);
-        }
-
-        const data = await response.json();
-        loadingBubble.remove();
-
-        if (data.sessionId != null) {
-            currentSessionId = data.sessionId;
-
-            const url = new URL(window.location.href);
-            url.searchParams.set('sessionId', currentSessionId);
-            window.history.replaceState({}, '', url);
-        }
-
-        appendMessage(data.reply, 'bot');
-    } catch (err) {
-        console.error('Error sending message:', err);
-        loadingBubble.textContent = "Oops! I had trouble answering. Try again in a moment.";
-    }
-}
-
-/**
- * Load the initial welcome message from the tutor.
- */
 async function loadWelcomeMessage() {
-    const chatWindow = document.getElementById('chat-window');
-    if (!chatWindow) return;
-
-    const loadingBubble = document.createElement('div');
-    loadingBubble.classList.add('chat-message', 'bot-message');
-    loadingBubble.textContent = "Loading LearnBot...";
-    chatWindow.appendChild(loadingBubble);
+    const loadingBubble = appendLoadingBubble('Loading LearnBot...');
 
     try {
         const response = await fetch('/api/chat-welcome', {
@@ -259,16 +189,17 @@ async function loadWelcomeMessage() {
             body: JSON.stringify({
                 gradeLevel: currentGradeLevel,
                 topic: currentTopic || 'Welcome',
-                stepByStep: stepByStepMode    // 👈 NEW
+                stepByStep: stepByStepMode,
+                persona: currentPersona
             })
         });
 
         if (!response.ok) {
-            throw new Error("HTTP " + response.status);
+            throw new Error('HTTP ' + response.status);
         }
 
         const data = await response.json();
-        loadingBubble.remove();
+        if (loadingBubble) loadingBubble.remove();
 
         if (data.sessionId != null) {
             currentSessionId = data.sessionId;
@@ -280,13 +211,13 @@ async function loadWelcomeMessage() {
         appendMessage(data.reply, 'bot');
     } catch (err) {
         console.error('Error loading welcome message:', err);
-        loadingBubble.textContent = "Hi! I'm LearnBot. Ask me any math question to get started!";
+        if (loadingBubble) loadingBubble.remove();
+        appendMessage(
+            "Hi! I'm LearnBot. Choose your grade and topic to get a mini-lesson!",
+            'bot'
+        );
     }
 }
-
-/**
- * Load an existing session's transcript and replay it in the UI.
- */
 async function loadExistingSession(id) {
     try {
         const res = await fetch(`/api/sessions/${id}`);
@@ -319,15 +250,16 @@ async function loadExistingSession(id) {
     }
 }
 
-/**
- * Initialize the page once the DOM is ready.
- */
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('chat-form');
     const newSessionBtn = document.getElementById('new-session-btn');
-
-    // GRADE LEVEL SETUP ---------------------------------------
     const gradeSelect = document.getElementById('grade-level-select');
+    const personaSelect = document.getElementById('persona-select');
+
+    if (personaSelect) {
+        personaSelect.addEventListener('change', () => {
+            currentPersona = personaSelect.value;
+        });
+    }
 
     if (gradeSelect) {
         const savedGrade = localStorage.getItem('learnbot-grade-level');
@@ -346,8 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTopicsForGrade();
         });
     }
-
-    // STEP-BY-STEP MODE SETUP --------------------------------
     const stepToggle = document.getElementById('step-mode-toggle');
     if (stepToggle) {
         const savedStepMode = localStorage.getItem('learnbot-step-mode');
@@ -364,28 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // TOPIC GRID INITIAL RENDER ------------------------------
     renderTopicsForGrade();
-
-    // CHAT FORM HANDLING -------------------------------------
-    if (form) {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            sendUserMessage();
-        });
-
-        const input = document.getElementById('user-message-input');
-        if (input) {
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendUserMessage();
-                }
-            });
-        }
-    }
-
-    // NEW SESSION BUTTON -------------------------------------
     if (newSessionBtn) {
         newSessionBtn.addEventListener('click', () => {
             const chatWindow = document.getElementById('chat-window');
@@ -417,3 +326,4 @@ document.addEventListener('DOMContentLoaded', () => {
         loadWelcomeMessage();
     }
 });
+

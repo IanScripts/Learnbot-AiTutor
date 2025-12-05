@@ -1,36 +1,44 @@
 package cs3220.aitutor.services;
 
+import cs3220.aitutor.model.UserAccount;
+import cs3220.aitutor.repositories.UserAccountRepository;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UserService {
 
-    // username -> password  (for homework/demo; later use hashing + DB)
-    private final Map<String, String> users = new ConcurrentHashMap<>();
+    private final UserAccountRepository userRepository;
 
-    public UserService() {
-        // Optional: seed a demo user
-        users.put("demo", "password");
+    public UserService(UserAccountRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public boolean register(String username, String password) {
-        if (username == null || username.isBlank()
-                || password == null || password.isBlank()) {
+    public boolean registerUser(String username, String password) {
+        if (username == null || username.isBlank() ||
+                password == null || password.isBlank()) {
             return false;
         }
-        if (users.containsKey(username)) {
-            return false; // already taken
+
+        if (userRepository.existsByUsername(username)) {
+            return false;
         }
-        users.put(username, password);
+
+        UserAccount account = new UserAccount(username.trim(), password);
+        userRepository.save(account);
         return true;
+    }
+
+
+    public boolean register(String username, String password) {
+        return registerUser(username, password);
     }
 
     public boolean authenticate(String username, String password) {
         if (username == null || password == null) return false;
-        String stored = users.get(username);
-        return stored != null && stored.equals(password);
+
+        return userRepository.findByUsername(username.trim())
+                .map(user -> user.getPassword().equals(password))
+                .orElse(false);
     }
 }
+

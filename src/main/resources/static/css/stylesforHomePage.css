@@ -81,7 +81,6 @@ body::before {
     min-height: calc(100vh - 56px);
 }
 
-/* === SIDEBAR === */
 
 .sidebar {
     width: 260px;
@@ -106,7 +105,7 @@ body::before {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    background: linear-gradient(135deg, #ffafbd 0%, #ffc3a0 50%, #fdfbfb 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #ffffff 50%, #fdfbfb 100%);
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     font-size: 0.8rem;
@@ -167,8 +166,6 @@ body::before {
     border-top: 1px dashed var(--sidebar-border);
 }
 
-/* === MAIN CHAT AREA === */
-
 .chat-area {
     flex: 1;
     padding: 1.5rem 2rem;
@@ -191,7 +188,6 @@ body::before {
     border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
-/* HEADER ROW ABOVE CHAT */
 
 .chat-header-row {
     display: flex;
@@ -236,7 +232,6 @@ body::before {
     border: 1px solid #bfdbfe;
 }
 
-/* NEW SESSION BUTTON IN HEADER */
 
 .chat-header-actions {
     display: flex;
@@ -268,7 +263,6 @@ body::before {
     box-shadow: 0 6px 10px rgba(22, 163, 74, 0.45);
 }
 
-/* CHAT + SIDE CONTROLS LAYOUT */
 
 .chat-body-row {
     display: grid;
@@ -277,7 +271,6 @@ body::before {
     align-items: flex-start;
 }
 
-/* LEFT: CHAT MESSAGES */
 
 .chat-session-container {
     background-color: #f9fafb;
@@ -303,7 +296,6 @@ body::before {
     gap: 0.55rem;
 }
 
-/* custom scrollbar */
 #chat-window::-webkit-scrollbar {
     width: 8px;
 }
@@ -336,7 +328,6 @@ body::before {
     color: var(--bot-bubble-text);
 }
 
-/* CHAT INPUT */
 
 .chat-input-row {
     display: flex;
@@ -374,7 +365,6 @@ body::before {
     filter: brightness(1.05);
 }
 
-/* === RIGHT: CONTROLS + TOPIC GRID === */
 
 .chat-side-panel {
     display: flex;
@@ -436,8 +426,6 @@ body::before {
     color: var(--text-muted);
 }
 
-/* === BIG TOPIC BUTTON GRID (Step 1) === */
-
 #interaction-area {
     padding: 1.1rem 0;
     background-color: transparent;
@@ -498,14 +486,14 @@ body::before {
     box-shadow: 0 6px 12px rgba(15, 23, 42, 0.2);
 }
 
-/* Active (currently selected) topic */
+/* Active topic */
 .topic-btn-active {
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.45),
     0 12px 20px rgba(37, 99, 235, 0.35);
 }
 
-/* Icon variations based on the topic text (uses data-topic from JS) */
+/* Icon variations based on the topic text*/
 .topic-btn[data-topic*="Counting"]::before {
     content: "🔢";
 }
@@ -550,7 +538,6 @@ body::before {
     content: "📈";
 }
 
-/* Legacy mission buttons (if you reuse them elsewhere) */
 .option-button {
     border: none;
     border-radius: 1rem;
@@ -578,73 +565,6 @@ body::before {
 .option-button.color-blue   { background-color: #74b9ff; }
 .option-button.color-yellow { background-color: #ffdc76; color: #5d4a13; text-shadow: none; }
 
-/* === SETTINGS AREA SHARED STYLES (if reused) === */
-
-.settings-area {
-    flex-grow: 1;
-    padding: 2rem 3rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.settings-card {
-    background-color: var(--bg-card);
-    border-radius: 1.25rem;
-    padding: 1.25rem 1.5rem;
-    border: 1px solid var(--sidebar-border);
-    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.1);
-}
-
-.settings-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-}
-
-.settings-card-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.settings-card-subtitle {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.settings-section-title {
-    margin-top: 1.5rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #9ca3af;
-}
-
-.settings-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    font-size: 0.9rem;
-}
-
-.settings-item-label {
-    color: var(--text);
-}
-
-.settings-item-helper {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.theme-toggle-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
 
 /* responsive: hide sidebar on very small screens */
 @media (max-width: 768px) {
@@ -670,3 +590,53 @@ body::before {
     }
 }
 
+.parent-card {
+    background: #f9fafb;
+    border-radius: 18px;
+    border: 2px solid #e5e7eb;
+}
+
+.summary-tile {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+}
+
+.summary-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #111827;
+}
+
+.summary-caption {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.parent-list .list-group-item {
+    border-left: 0;
+    border-right: 0;
+}
+
+.parent-table-wrapper {
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+.parent-table thead th {
+    border-bottom-width: 1px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+}

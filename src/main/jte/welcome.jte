@@ -27,7 +27,6 @@
             <a href="/home" class="nav-pill">Home</a>
             <a href="/sessions" class="nav-pill">Sessions</a>
             <a href="/contact" class="nav-pill">Contact</a>
-            <a href="/tutor/topics" class="nav-pill">Practice</a>
         </nav>
     </div>
 </header>
@@ -58,15 +57,23 @@
                    href="/login"
                    role="button"
                    aria-label="Continue to lessons (login required)">
-                    Continue to lessons
+                    Let's Get Started
                 </a>
             </p>
 
             <section class="bulletin" aria-labelledby="news">
                 <h3 id="news">What’s new?</h3>
                 <ul>
-                    <li><time>2025-09-26</time> Initial layout complete.</li>
-                    <li><time>2025-09-26</time> Added CTA button &amp; developer bulletin.</li>
+                    <li>
+                        <time>2025-12-01</time>
+                        Parent / Teacher dashboard upgraded with database-backed stats
+                        (sessions by grade, different topics, and Gamemode problems attempted).
+                    </li>
+                    <li>
+                        <time>2025-12-01</time>
+                        LearnBot now saves users and chat sessions using Spring Data JPA
+                        so progress is kept even after the server restarts.
+                    </li>
                 </ul>
                 <p class="note" style="margin:.6rem 0 0; color:var(--muted); font-size:.9rem">
                     Developers: edit this list in the HTML to post site update notes.

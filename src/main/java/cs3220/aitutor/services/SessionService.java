@@ -1,104 +1,112 @@
 package cs3220.aitutor.services;
 
 import cs3220.aitutor.model.LearnSession;
+import cs3220.aitutor.repositories.LearnSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class SessionService {
 
-    private final Map<Long, LearnSession> sessions = new ConcurrentHashMap<>();
+    private final LearnSessionRepository repository;
 
-    // used somewhere else in your file (not shown in the snippet you pasted)
-    private final AtomicLong idSequence = new AtomicLong(1);
+    public SessionService(LearnSessionRepository repository) {
+        this.repository = repository;
+    }
 
-    // counter for "Math Mission #X"
-    private final AtomicLong missionCounter = new AtomicLong(1);
-
-    /** Create a new session for the given user. */
-    public LearnSession createSession(String username,
-                                      String title,
-                                      String topic,
-                                      String gradeLevel) {
-        Long id = idSequence.getAndIncrement();
-
-        // --- NEW: generate a simple, sweet title ---
-        String cuteTitle;
-        if (topic != null
-                && !topic.isBlank()
-                && !"Welcome".equalsIgnoreCase(topic)) {
-            // e.g. "Math Mission – Fractions"
-            cuteTitle = "Math Mission \u2013 " + topic;
-        } else {
-            // fallback: Math Mission #1, #2, ...
-            long missionNumber = missionCounter.getAndIncrement();
-            cuteTitle = "Math Mission #" + missionNumber;
-        }
-
+    public LearnSession createSession(
+            String username,
+            String title,
+            String topic,
+            String gradeLevel,
+            String mode,         // "teacher" | "game"
+            String difficulty    // "guided" | "normal" | "easy" | "hard"
+    ) {
         LearnSession session = new LearnSession(
-                id,
                 username,
-                cuteTitle,   // use our generated title
+                title,
                 topic,
                 gradeLevel,
                 LocalDateTime.now()
         );
-        sessions.put(id, session);
-        return session;
+        session.setMode(mode);
+        session.setDifficulty(difficulty);
+
+        // when saved, JPA assigns the ID
+        return repository.save(session);
     }
 
-    /** Delete a session, but only if it belongs to this user. */
-    public boolean deleteSessionForUser(long id, String username) {
-        LearnSession s = sessions.get(id);
-        if (s == null || !Objects.equals(s.getUsername(), username)) {
-            return false;
+    public void save(LearnSession session) {
+        if (session == null) {
+            return;
         }
-        sessions.remove(id);
-        return true;
+        repository.save(session);
     }
+    public void addTurn(Long sessionId, String role, String content) {
+        if (sessionId == null) return;
 
-    /** Find a session by id, but only if it belongs to this user. */
-    public Optional<LearnSession> findByIdForUser(long id, String username) {
-        LearnSession s = sessions.get(id);
-        if (s == null || !Objects.equals(s.getUsername(), username)) {
+        Optional<LearnSession> opt = repository.findById(sessionId);
+        if (opt.isEmpty()) return;
+
+        LearnSession s = opt.get();
+        s.addTurn(role, content);
+        repository.save(s);
+    }
+    public Optional<LearnSession> findByIdForUser(Long sessionId, String username) {
+        if (sessionId == null || username == null) {
             return Optional.empty();
         }
-        return Optional.of(s);
-    }
 
-    /** Add a turn (user or bot) to a session. Safe if session doesn't exist. */
-    public void addTurn(Long sessionId, String role, String content) {
-        LearnSession s = sessions.get(sessionId);
-        if (s != null) {
-            s.addTurn(role, content);
+        return repository.findById(sessionId)
+                .filter(s -> Objects.equals(s.getUsername(), username));
+    }
+    public boolean deleteSessionForUser(Long sessionId, String username) {
+        if (sessionId == null || username == null) return false;
+
+        Optional<LearnSession> opt = repository.findById(sessionId);
+        if (opt.isPresent() && Objects.equals(opt.get().getUsername(), username)) {
+            repository.delete(opt.get());
+            return true;
         }
+        return false;
     }
 
-    /** List all sessions for a specific user, newest first. */
     public List<LearnSession> listSessionsForUser(String username) {
-        return sessions.values().stream()
-                .filter(s -> Objects.equals(s.getUsername(), username))
-                .sorted(Comparator.comparing(LearnSession::getCreatedAt).reversed())
-                .collect(Collectors.toList());
+        if (username == null) return List.of();
+        return repository.findByUsernameAndModeOrderByCreatedAtDesc(username, "teacher");
+    }
+    public long countGameModeAttemptsForUser(String username) {
+        if (username == null) {
+            return 0L;
+        }
+
+        java.util.List<LearnSession> gameSessions =
+                repository.findByUsernameAndModeOrderByCreatedAtDesc(username, "game");
+
+        long total = 0L;
+        for (LearnSession session : gameSessions) {
+            if (session.getTurns() == null) continue;
+            total += session.getTurns().stream()
+                    .filter(t -> "user".equals(t.getRole()))
+                    .count();
+        }
+        return total;
     }
 
-    /** Build a short text summary (used by your SessionSummaryDto). */
-    public String buildSummary(LearnSession s) {
-        int totalTurns = s.getTurns().size();
-        long userTurns = s.getTurns().stream()
-                .filter(t -> "user".equalsIgnoreCase(t.getRole()))
-                .count();
-        long botTurns = totalTurns - userTurns;
+    public String buildSummary(LearnSession session) {
+        if (session.getTurns().isEmpty()) {
+            return "(empty)";
+        }
 
-        return String.format(
-                "%d messages (%d from you, %d from LearnBot).",
-                totalTurns, userTurns, botTurns
-        );
+        // show first bot line as summary
+        return session.getTurns().stream()
+                .filter(t -> "bot".equals(t.getRole()))
+                .map(LearnSession.Turn::getContent)
+                .findFirst()
+                .orElse("(no summary)");
     }
 }
-
