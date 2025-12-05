@@ -9,9 +9,6 @@ import java.util.List;
 @Table(name = "learn_sessions")
 public class LearnSession {
 
-    // ======================================================
-    // One turn in the conversation, stored as an element collection
-    // ======================================================
     @Embeddable
     public static class Turn {
 
@@ -57,9 +54,6 @@ public class LearnSession {
         }
     }
 
-    // ======================================================
-    // Basic session metadata
-    // ======================================================
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -80,18 +74,12 @@ public class LearnSession {
     )
     private List<Turn> turns = new ArrayList<>();
 
-    // ======================================================
-    // Step E — NEW metadata
-    // ======================================================
     private String mode;        // "teacher" | "game"
     private String difficulty;  // "guided" | "normal" | "easy" | "hard"
 
-    // 🔹 NEW: Persona used in teacher mode
+    // Persona used in teacher mode
     private String persona;     // "coach" | "wizard" | "space" | etc.
 
-    // ======================================================
-    // Guided Mode state
-    // ======================================================
     private Integer stepIndex;
     private String currentProblem;
 
@@ -103,9 +91,6 @@ public class LearnSession {
     @Column(name = "step_text")
     private List<String> steps = new ArrayList<>();
 
-    // ======================================================
-    // Constructors
-    // ======================================================
     public LearnSession() {
     }
 
@@ -122,9 +107,6 @@ public class LearnSession {
         this.createdAt = createdAt;
     }
 
-    // ======================================================
-    // Getters / Setters
-    // ======================================================
     public Long getId() {
         return id;
     }
@@ -197,9 +179,7 @@ public class LearnSession {
         this.difficulty = difficulty;
     }
 
-    // ======================================================
-    // 🔹 Persona getter/setter
-    // ======================================================
+
     public String getPersona() {
         return persona;
     }
@@ -208,16 +188,10 @@ public class LearnSession {
         this.persona = persona;
     }
 
-    // ======================================================
-    // Add conversation turn
-    // ======================================================
     public void addTurn(String role, String content) {
         turns.add(new Turn(role, content, LocalDateTime.now()));
     }
 
-    // ======================================================
-    // Guided Mode fields
-    // ======================================================
     public Integer getStepIndex() {
         return stepIndex;
     }

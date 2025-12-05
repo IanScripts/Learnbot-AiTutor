@@ -12,7 +12,7 @@ import java.util.List;
 
 record GameModeStatsDto(long gameAttempts) {}
 
-// 🔹 now includes stepByStep, persona, miniLecture
+// now includes stepByStep, persona, miniLecture
 record ChatRequest(
         String message,
         String gradeLevel,
@@ -43,7 +43,7 @@ record SessionDetailDto(
         List<LearnSession.Turn> turns
 ) {}
 
-// 🔹 Welcome request now also carries persona
+// Welcome request now also carries persona
 record WelcomeRequest(
         String gradeLevel,
         String topic,
@@ -180,7 +180,7 @@ public class ChatApiController {
         session.setGradeLevel(gradeLevel);
         session.setMode("teacher");
         session.setDifficulty(difficulty);
-        session.setPersona(persona); // 🔹 remember persona choice
+        session.setPersona(persona); // remember persona choice
 
         // Store USER message
         String rawMessage = request.message();
